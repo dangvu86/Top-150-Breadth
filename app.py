@@ -229,7 +229,35 @@ fig1.update_layout(height=600, showlegend=False)
 
 st.plotly_chart(fig1, use_container_width=True)
 
-# Chart 2: MFI and MFI RSI
+# Chart 2: VnIndex and Breadth % Above MA50
+st.subheader("VnIndex & Breadth % > MA50")
+fig_breadth = make_subplots(
+    rows=2, cols=1,
+    shared_xaxes=True,
+    vertical_spacing=0.05,
+    row_heights=[0.6, 0.4]
+)
+
+fig_breadth.add_trace(
+    go.Scatter(x=chart_data['Trading Date'], y=chart_data['VnIndex'],
+               name='VnIndex', line=dict(color='blue', width=2)),
+    row=1, col=1
+)
+
+fig_breadth.add_trace(
+    go.Scatter(x=chart_data['Trading Date'], y=chart_data['Breadth_Above_MA50'],
+               name='Breadth % > MA50', line=dict(color='teal', width=2)),
+    row=2, col=1
+)
+
+fig_breadth.update_xaxes(title_text="Date", row=2, col=1)
+fig_breadth.update_yaxes(title_text="VnIndex", row=1, col=1)
+fig_breadth.update_yaxes(title_text="Breadth %", row=2, col=1)
+fig_breadth.update_layout(height=600, showlegend=False)
+
+st.plotly_chart(fig_breadth, use_container_width=True)
+
+# Chart 3: MFI and MFI RSI
 st.subheader("MFI & RSI")
 fig2 = make_subplots(
     rows=2, cols=1,
@@ -262,7 +290,7 @@ fig2.update_layout(height=600, showlegend=False)
 
 st.plotly_chart(fig2, use_container_width=True)
 
-# Chart 3: A/D and A/D RSI
+# Chart 4: A/D and A/D RSI
 st.subheader("Advance/Decline & RSI")
 fig3 = make_subplots(
     rows=2, cols=1,
@@ -295,7 +323,7 @@ fig3.update_layout(height=600, showlegend=False)
 
 st.plotly_chart(fig3, use_container_width=True)
 
-# Chart 4: NHNL and NHNL RSI
+# Chart 5: NHNL and NHNL RSI
 st.subheader("New High/New Low & RSI")
 fig4 = make_subplots(
     rows=2, cols=1,
