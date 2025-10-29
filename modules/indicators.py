@@ -141,6 +141,7 @@ def calculate_all_indicators(df_vnindex, df_stocks):
 
     # Calculate RSI for VNINDEX
     df_result['VnIndex_RSI_21'] = calculate_rsi(df_result['VnIndex'], period=21)
+    df_result['VnIndex_RSI_70'] = calculate_rsi(df_result['VnIndex'], period=70)
 
     # Calculate Breadth
     df_breadth = calculate_breadth_above_ma50(df_stocks)

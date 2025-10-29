@@ -71,14 +71,15 @@ display_columns = [
     'Trading Date',
     'VnIndex',
     'VnIndex_RSI_21',
+    'VnIndex_RSI_70',
     'Breadth_Above_MA50',
-    'MFI_15D_Sum',
     'MFI_15D_RSI_21',
-    'AD_15D_Sum',
     'AD_15D_RSI_21',
-    'NHNL_15D_Sum',
     'NHNL_15D_RSI_21',
     # Remaining columns
+    'MFI_15D_Sum',
+    'AD_15D_Sum',
+    'NHNL_15D_Sum',
     'Breadth_20D_Avg',
     'MFI_Up_Value',
     'MFI_Down_Value',
@@ -103,26 +104,27 @@ display_df = df_filtered[display_columns].copy()
 column_mapping = {
     'Trading Date': 'Date',
     'VnIndex': 'VnIndex',
-    'VnIndex_RSI_21': 'VnIndex RSI (21D)',
-    'Breadth_Above_MA50': 'Breadth % Above MA50',
+    'VnIndex_RSI_21': 'VNI RSI21',
+    'VnIndex_RSI_70': 'VNI RSI70',
+    'Breadth_Above_MA50': 'Breadth - % > MA50',
+    'MFI_15D_RSI_21': 'MFI RSI',
+    'AD_15D_RSI_21': 'A/D RSI',
+    'NHNL_15D_RSI_21': 'NHNL RSI',
+    'MFI_15D_Sum': 'MFI',
+    'AD_15D_Sum': 'AD',
+    'NHNL_15D_Sum': 'NHNL',
     'Breadth_20D_Avg': '20D Avg Breadth',
     'MFI_Up_Value': 'MFI: Up Value',
     'MFI_Down_Value': 'MFI: Down Value',
-    'MFI_15D_Sum': 'MFI',
     'MFI_20D_Avg': '20D Avg MFI',
-    'MFI_15D_RSI_21': 'MFI: RSI (21D)',
     'AD_Advances': 'A/D: Advances',
     'AD_Declines': 'A/D: Declines',
     'AD_Net': 'A/D: Net (A-B)',
-    'AD_15D_Sum': 'AD',
     'AD_20D_Avg': '20D Avg A/D',
-    'AD_15D_RSI_21': 'A/D: RSI (21D)',
     'NHNL_New_Highs': 'NHNL: New Highs',
     'NHNL_New_Lows': 'NHNL: New Lows',
     'NHNL_Net': 'NHNL: Net (A-B)',
-    'NHNL_15D_Sum': 'NHNL',
-    'NHNL_20D_Avg': '20D Avg NHNL',
-    'NHNL_15D_RSI_21': 'NHNL: RSI (21D)'
+    'NHNL_20D_Avg': '20D Avg NHNL'
 }
 
 # Rename columns for display
@@ -148,32 +150,28 @@ display_df = display_df.sort_values('Date', ascending=False)
 column_config = {
     'Date': st.column_config.TextColumn('Date'),
     'VnIndex': st.column_config.NumberColumn('VnIndex', format="%.2f"),
-    'VnIndex RSI (21D)': st.column_config.NumberColumn('VnIndex RSI (21D)', format="%.2f"),
-    'Breadth % Above MA50': st.column_config.NumberColumn('Breadth % Above MA50', format="%.2f%%"),
+    'VNI RSI21': st.column_config.NumberColumn('VNI RSI21', format="%.2f"),
+    'VNI RSI70': st.column_config.NumberColumn('VNI RSI70', format="%.2f"),
+    'Breadth - % > MA50': st.column_config.NumberColumn('Breadth - % > MA50', format="%.2f%%"),
+    'MFI RSI': st.column_config.NumberColumn('MFI RSI', format="%.2f"),
+    'A/D RSI': st.column_config.NumberColumn('A/D RSI', format="%.2f"),
+    'NHNL RSI': st.column_config.NumberColumn('NHNL RSI', format="%.2f"),
+    'MFI': st.column_config.TextColumn('MFI'),
+    'AD': st.column_config.NumberColumn('AD', format="%d"),
+    'NHNL': st.column_config.NumberColumn('NHNL', format="%d"),
     '20D Avg Breadth': st.column_config.NumberColumn('20D Avg Breadth', format="%.2f%%"),
     'MFI: Up Value': st.column_config.TextColumn('MFI: Up Value'),
     'MFI: Down Value': st.column_config.TextColumn('MFI: Down Value'),
-    'MFI': st.column_config.TextColumn('MFI'),
     '20D Avg MFI': st.column_config.TextColumn('20D Avg MFI'),
     'A/D: Advances': st.column_config.NumberColumn('A/D: Advances', format="%d"),
     'A/D: Declines': st.column_config.NumberColumn('A/D: Declines', format="%d"),
     'A/D: Net (A-B)': st.column_config.NumberColumn('A/D: Net (A-B)', format="%d"),
-    'AD': st.column_config.NumberColumn('AD', format="%d"),
     '20D Avg A/D': st.column_config.NumberColumn('20D Avg A/D', format="%.2f"),
     'NHNL: New Highs': st.column_config.NumberColumn('NHNL: New Highs', format="%d"),
     'NHNL: New Lows': st.column_config.NumberColumn('NHNL: New Lows', format="%d"),
     'NHNL: Net (A-B)': st.column_config.NumberColumn('NHNL: Net (A-B)', format="%d"),
-    'NHNL': st.column_config.NumberColumn('NHNL', format="%d"),
     '20D Avg NHNL': st.column_config.NumberColumn('20D Avg NHNL', format="%.2f"),
 }
-
-# Add RSI columns if they exist
-if 'MFI: RSI (21D)' in display_df.columns:
-    column_config['MFI: RSI (21D)'] = st.column_config.NumberColumn('MFI: RSI (21D)', format="%.2f")
-if 'A/D: RSI (21D)' in display_df.columns:
-    column_config['A/D: RSI (21D)'] = st.column_config.NumberColumn('A/D: RSI (21D)', format="%.2f")
-if 'NHNL: RSI (21D)' in display_df.columns:
-    column_config['NHNL: RSI (21D)'] = st.column_config.NumberColumn('NHNL: RSI (21D)', format="%.2f")
 
 # Display table with NumberColumn for right alignment and formatting
 st.dataframe(
@@ -183,8 +181,9 @@ st.dataframe(
     column_config=column_config
 )
 
-# Download button
-csv = df_filtered.to_csv(index=False)
+# Download button - sort by date descending
+df_export = df_filtered.sort_values('Trading Date', ascending=False)
+csv = df_export.to_csv(index=False)
 st.download_button(
     label="📥 Download Full Data as CSV",
     data=csv,
