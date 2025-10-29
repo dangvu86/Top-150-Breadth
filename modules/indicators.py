@@ -1,14 +1,22 @@
 import pandas as pd
 import numpy as np
+import pandas_ta as pta
 
 def calculate_rsi(prices, period=21):
-    """Calculate RSI indicator"""
-    delta = prices.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+    """Calculate RSI indicator using Wilder's method (EMA smoothing)
+
+    This uses pandas_ta library which implements the standard Wilder's RSI:
+    - First average: Simple Moving Average (SMA)
+    - Subsequent values: Exponential smoothing with alpha = 1/period
+
+    Args:
+        prices: pandas Series of prices
+        period: RSI period (default 21)
+
+    Returns:
+        pandas Series of RSI values
+    """
+    return pta.rsi(prices, length=period)
 
 def calculate_breadth_above_ma50(df_stocks):
     """Calculate percentage of stocks above their 50-day MA - Optimized"""

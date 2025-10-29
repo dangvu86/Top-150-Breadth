@@ -40,22 +40,28 @@ with st.spinner("Calculating indicators..."):
 
 # Filters
 st.sidebar.header("Filters")
-date_range = st.sidebar.date_input(
-    "Select Date Range",
-    value=(df_result['Trading Date'].min(), df_result['Trading Date'].max()),
+
+# Start Date
+start_date = st.sidebar.date_input(
+    "Start Date",
+    value=df_result['Trading Date'].min().date(),
+    min_value=df_result['Trading Date'].min().date(),
+    max_value=df_result['Trading Date'].max().date()
+)
+
+# End Date
+end_date = st.sidebar.date_input(
+    "End Date",
+    value=df_result['Trading Date'].max().date(),
     min_value=df_result['Trading Date'].min().date(),
     max_value=df_result['Trading Date'].max().date()
 )
 
 # Filter data
-if len(date_range) == 2:
-    start_date, end_date = date_range
-    df_filtered = df_result[
-        (df_result['Trading Date'].dt.date >= start_date) &
-        (df_result['Trading Date'].dt.date <= end_date)
-    ]
-else:
-    df_filtered = df_result
+df_filtered = df_result[
+    (df_result['Trading Date'].dt.date >= start_date) &
+    (df_result['Trading Date'].dt.date <= end_date)
+]
 
 # Display data table
 st.header("Market Breadth Indicators")
