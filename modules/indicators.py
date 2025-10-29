@@ -15,7 +15,15 @@ def calculate_rsi(prices, period=21):
 
     Returns:
         pandas Series of RSI values
+
+    Note: RSI calculation requires at least (period * 2) data points for proper warmup.
+    Values before this will be NaN.
     """
+    # Ensure consistent behavior across environments by requiring proper warmup period
+    # This prevents inconsistent results between localhost and Streamlit Cloud
+    if len(prices) < period * 2:
+        return pd.Series([np.nan] * len(prices), index=prices.index)
+
     return pta.rsi(prices, length=period)
 
 def calculate_breadth_above_ma50(df_stocks):

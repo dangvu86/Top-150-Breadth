@@ -34,7 +34,10 @@ streamlit run app.py --server.port=8502
    - Tự động clean data: strip whitespace, parse dates, convert số có dấu phẩy
 
 2. **modules/indicators.py**: Tính toán các chỉ số kỹ thuật
-   - `calculate_rsi()`: RSI 21 ngày - dùng cho VNINDEX và các breadth indicators
+   - `calculate_rsi()`: RSI 21 ngày - dùng **Wilder's EMA method** (chuẩn quốc tế) thông qua `pandas_ta.rsi()`
+     - First average: Simple Moving Average (SMA)
+     - Subsequent values: Exponential smoothing với alpha = 1/period
+     - Cho kết quả chính xác khớp với TradingView, Bloomberg, MetaTrader
    - `calculate_breadth_above_ma50()`: % cổ phiếu có giá > MA50
    - `calculate_money_flow_index()`: Money Flow Index dựa trên daily price change
    - `calculate_advance_decline()`: Advance/Decline indicator
@@ -44,7 +47,8 @@ streamlit run app.py --server.port=8502
 3. **app.py**: Main Streamlit application
    - Uses `@st.cache_data` để cache data loading và calculations
    - Displays dataframe với formatting (không có metrics summary)
-   - Có date range filter và download CSV feature
+   - Có 2 date filters riêng biệt trong sidebar: **Start Date** và **End Date**
+   - Download CSV feature
    - 4 interactive charts (Plotly) với subplots: VnIndex, MFI, A/D, NHNL - mỗi chart có indicator và RSI của nó
 
 ### Key Calculation Logic
@@ -70,10 +74,11 @@ streamlit run app.py --server.port=8502
 
 **Breadth**: Đếm % stocks có current price > MA50 của chính nó
 
-**RSI for Breadth Indicators**:
+**RSI for Breadth Indicators** (Wilder's method):
 - Áp dụng công thức RSI 21 ngày lên MFI_15D_Sum → MFI_15D_RSI_21
 - Áp dụng công thức RSI 21 ngày lên AD_15D_Sum → AD_15D_RSI_21
 - Áp dụng công thức RSI 21 ngày lên NHNL_15D_Sum → NHNL_15D_RSI_21
+- Dùng `pandas_ta.rsi()` với Wilder's EMA smoothing (chuẩn quốc tế, KHÔNG dùng SMA)
 
 ### Performance Optimization
 
