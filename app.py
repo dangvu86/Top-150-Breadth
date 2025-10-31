@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(__file__))
 
 from modules.data_loader import load_vnindex_data, load_price_volume_data
 from modules.indicators import calculate_all_indicators
+from modules.winrate_api import fetch_winrate_data
 
 # Page config
 st.set_page_config(
@@ -20,23 +21,86 @@ st.set_page_config(
 
 
 
-# Load data with cache
-@st.cache_data
+# Load data - no cache, always reload when app restarts
 def load_data():
+    progress_bar = st.progress(0)
+
+    # Load VNINDEX
+    progress_bar.progress(25)
     df_vnindex = load_vnindex_data()
+
+    # Load stocks
+    progress_bar.progress(50)
     df_stocks = load_price_volume_data()
+
+    progress_bar.progress(100)
+
+    # Clear progress bar after completion
+    import time
+    time.sleep(0.3)
+    progress_bar.empty()
+
     return df_vnindex, df_stocks
 
-@st.cache_data
 def compute_indicators(df_vnindex, df_stocks):
-    return calculate_all_indicators(df_vnindex, df_stocks)
+    progress_bar = st.progress(0)
+
+    progress_bar.progress(50)
+    result = calculate_all_indicators(df_vnindex, df_stocks)
+
+    progress_bar.progress(100)
+
+    # Clear progress bar after completion
+    import time
+    time.sleep(0.3)
+    progress_bar.empty()
+
+    return result
 
 # Load and calculate
-with st.spinner("Loading data..."):
-    df_vnindex, df_stocks = load_data()
+df_vnindex, df_stocks = load_data()
+df_result = compute_indicators(df_vnindex, df_stocks)
 
-with st.spinner("Calculating indicators..."):
-    df_result = compute_indicators(df_vnindex, df_stocks)
+# Load WinRate data from API
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def load_winrate_data():
+    # Get bearer token from secrets (fallback to empty string for local testing)
+    try:
+        bearer_token = st.secrets.get("DRAGON_CAPITAL_TOKEN", "")
+    except:
+        bearer_token = ""
+
+    if bearer_token:
+        df_winrate = fetch_winrate_data(bearer_token)
+        return df_winrate
+    else:
+        # Return empty DataFrame if no token
+        return pd.DataFrame(columns=['date', 'winRate'])
+
+df_winrate = load_winrate_data()
+
+# Merge WinRate data with result
+if not df_winrate.empty:
+    # Rename winRate column
+    df_winrate = df_winrate.rename(columns={'winRate': 'New_High_WinRate'})
+
+    # Convert to percentage
+    df_winrate['New_High_WinRate'] = df_winrate['New_High_WinRate'] * 100
+
+    # Ensure both date columns are datetime without timezone
+    df_winrate['date'] = pd.to_datetime(df_winrate['date']).dt.tz_localize(None)
+    df_result['Trading Date'] = pd.to_datetime(df_result['Trading Date']).dt.tz_localize(None)
+
+    # Merge on date
+    df_result = df_result.merge(
+        df_winrate[['date', 'New_High_WinRate']],
+        left_on='Trading Date',
+        right_on='date',
+        how='left'
+    )
+
+    # Drop the extra date column
+    df_result = df_result.drop(columns=['date'])
 
 # Filters
 st.sidebar.header("Filters")
@@ -76,6 +140,7 @@ display_columns = [
     'MFI_15D_RSI_21',
     'AD_15D_RSI_21',
     'NHNL_15D_RSI_21',
+    'New_High_WinRate',  # New High column after NHNL RSI
     # Remaining columns
     'MFI_15D_Sum',
     'AD_15D_Sum',
@@ -110,6 +175,7 @@ column_mapping = {
     'MFI_15D_RSI_21': 'MFI RSI',
     'AD_15D_RSI_21': 'A/D RSI',
     'NHNL_15D_RSI_21': 'NHNL RSI',
+    'New_High_WinRate': 'New High',
     'MFI_15D_Sum': 'MFI',
     'AD_15D_Sum': 'AD',
     'NHNL_15D_Sum': 'NHNL',
@@ -156,6 +222,7 @@ column_config = {
     'MFI RSI': st.column_config.NumberColumn('MFI RSI', format="%.2f"),
     'A/D RSI': st.column_config.NumberColumn('A/D RSI', format="%.2f"),
     'NHNL RSI': st.column_config.NumberColumn('NHNL RSI', format="%.2f"),
+    'New High': st.column_config.NumberColumn('New High', format="%.2f%%"),
     'MFI': st.column_config.TextColumn('MFI'),
     'AD': st.column_config.NumberColumn('AD', format="%d"),
     'NHNL': st.column_config.NumberColumn('NHNL', format="%d"),

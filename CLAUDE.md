@@ -21,17 +21,20 @@ streamlit run app.py --server.port=8502
 
 ## Data Sources
 
-- **VNINDEX data**: `D:\OneDrive - DRAGON CAPITAL\Claude\FiinProX_Thong_ke_thi_truong_Thong_ke_gia_Tong_quan_VNINDEX_20251027.xlsx` - Dữ liệu chỉ số VNINDEX từ FiinProX (giá đóng cửa, % thay đổi)
-- **Stock data**: `D:\OneDrive - DRAGON CAPITAL\Claude\PriceVolume.csv` - Dữ liệu 132 mã cổ phiếu (giá, khối lượng khớp lệnh, giá trị khớp lệnh)
+- **VNINDEX data**: TCBS API (https://apipubaws.tcbs.com.vn) - từ 2022-10-31 đến hiện tại
+- **Stock data**: Google Drive - 4 files CSV (393 stocks, filter còn 200 stocks theo danh sách cố định)
+- **New High WinRate**: Dragon Capital API (https://api-gateway-sandbox2.dragoncapital.com.vn/iris-sandbox/api/financialGainAnalyzer/win-rate) - 487 ngày từ 2023-10-30 đến hiện tại
 
 ## Architecture
 
 ### Module Structure
 
-1. **modules/data_loader.py**: Load dữ liệu từ OneDrive
-   - `load_vnindex_data()`: Load VNINDEX data từ Excel file (FiinProX export)
-   - `load_price_volume_data()`: Load stock price/volume data từ CSV file
-   - Tự động clean data: strip whitespace, parse dates, convert số có dấu phẩy
+1. **modules/data_loader.py**: Load dữ liệu
+   - `load_vnindex_data()`: Load VNINDEX data từ TCBS API
+     - Date range: 2022-10-31 đến hiện tại (match với stock data)
+     - Manual filter vì TCBS API ignore `to_ts` parameter
+   - `load_price_volume_data()`: Load 200 stocks từ 4 Google Drive CSV files
+   - Calculate Matching Value = close * volume
 
 2. **modules/indicators.py**: Tính toán các chỉ số kỹ thuật
    - `calculate_rsi()`: RSI với period tùy chỉnh - dùng **Wilder's EMA method** (chuẩn quốc tế) thông qua `pandas_ta.rsi()`
@@ -39,7 +42,7 @@ streamlit run app.py --server.port=8502
      - Subsequent values: Exponential smoothing với alpha = 1/period
      - Cho kết quả chính xác khớp với TradingView, Bloomberg, MetaTrader
      - Hỗ trợ cả RSI 21 ngày và RSI 70 ngày
-   - `calculate_breadth_above_ma50()`: % cổ phiếu có giá > MA50
+   - `calculate_breadth_above_ma50()`: % cổ phiếu có giá > MA50 (chỉ đếm stocks có MA50 hợp lệ, bỏ qua stocks chưa đủ 50 ngày)
    - `calculate_money_flow_index()`: Money Flow Index dựa trên daily price change
    - `calculate_advance_decline()`: Advance/Decline indicator
    - `calculate_new_high_new_low()`: New High/New Low indicator
@@ -74,6 +77,21 @@ streamlit run app.py --server.port=8502
 - Rolling sum C của 15 ngày
 
 **Breadth**: Đếm % stocks có current price > MA50 của chính nó
+- Chỉ tính stocks có MA50 hợp lệ (đủ 50 ngày dữ liệu)
+- Stocks chưa đủ 50 ngày bị loại khỏi cả tử số và mẫu số
+- Filter: `df_stocks[df_stocks['MA50'].notna()]` trước khi tính %
+
+## Known Issues
+
+### TCBS API Limitations
+- **Issue**: TCBS API parameter `to_ts` bị ignore, luôn trả về data đến hiện tại
+- **Impact**: Nếu request từ 2024-01-01 đến 2024-01-31, API vẫn trả về data đến hiện tại
+- **Solution**: Manual filter sau khi nhận data: `df[(df['tradingDate'] >= start) & (df['tradingDate'] <= end)]`
+
+### Data Source Differences
+- **TCBS vs VCI**: Có 3 ngày giá close khác nhau (2024-11-25, 2025-04-03, 2025-07-29)
+- **Impact**: RSI tính từ TCBS và VCI lệch ~0.05 điểm (ví dụ: 60.62 vs 60.57)
+- **Current**: Dùng TCBS vì ổn định trên Streamlit Cloud, vnstock/VCI gặp lỗi khi deploy
 
 **RSI for Breadth Indicators** (Wilder's method):
 - Áp dụng công thức RSI 21 ngày lên MFI_15D_Sum → MFI_15D_RSI_21

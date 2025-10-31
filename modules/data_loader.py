@@ -1,53 +1,104 @@
 import pandas as pd
 import io
 import requests
+from datetime import datetime
 
 def load_vnindex_data():
-    """Load VNINDEX data from Google Sheets"""
-    # Google Sheets public URL - export as Excel
-    sheet_id = "111j7cIaLE8CrIzy1af-YbTT8ezfrxjzv"
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+    """Load VNINDEX data from TCBS API"""
+    ticker = 'VNINDEX'
+    from_ts = int(pd.Timestamp('2022-10-31').timestamp())
+    to_ts = int(datetime.now().timestamp())
 
-    # Download the file
-    response = requests.get(url)
+    url = f'https://apipubaws.tcbs.com.vn/stock-insight/v1/stock/bars-long-term?ticker={ticker}&type=index&resolution=D&from={from_ts}&to={to_ts}'
+
+    response = requests.get(url, timeout=30)
     response.raise_for_status()
 
-    # Read Excel from bytes
-    df = pd.read_excel(io.BytesIO(response.content), header=12, skiprows=[13, 14])
+    data = response.json()
+    records = data.get('data', [])
 
-    # Keep only needed columns
+    if not records:
+        raise ValueError("No data returned from TCBS API")
+
+    df = pd.DataFrame(records)
+    df['tradingDate'] = pd.to_datetime(df['tradingDate']).dt.tz_localize(None)
+
+    # Filter by date range (TCBS API ignores to_ts parameter)
+    df = df[(df['tradingDate'] >= '2022-10-31') & (df['tradingDate'] <= datetime.now())]
+
+    df['pct_change'] = df['close'].pct_change() * 100
+
+    df = df.rename(columns={
+        'tradingDate': 'Ngày',
+        'close': 'Giá đóng cửa',
+        'pct_change': '% Thay đổi'
+    })
+
     df = df[['Ngày', 'Giá đóng cửa', '% Thay đổi']].copy()
-    # Remove footer rows (where Ngày is not a valid date)
-    df = df[pd.notna(df['Ngày'])]
-    df = df[df['Ngày'] != 'Contact']
-    # Convert date
-    df['Ngày'] = pd.to_datetime(df['Ngày'], errors='coerce')
-    # Remove any rows where date conversion failed
-    df = df[pd.notna(df['Ngày'])]
-    # Sort and reset index
     df = df.sort_values('Ngày').reset_index(drop=True)
+
     return df
 
 def load_price_volume_data():
-    """Load stock price and volume data from Google Drive"""
-    # Google Drive public file - direct download URL
-    file_id = "15y35qOprQHFP3Q6xXAHLm0APlOcts1tf"
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    """Load stock price and volume data from 4 Google Drive files"""
+    # List of 200 stocks to filter (from original dataset)
+    stock_list_200 = ['AAA', 'ACB', 'ACG', 'AGG', 'AGR', 'ANV', 'APG', 'ASM', 'AST', 'BAF',
+                      'BBC', 'BCG', 'BCM', 'BFC', 'BHN', 'BIC', 'BID', 'BMI', 'BMP', 'BSI',
+                      'BSR', 'BVH', 'BWE', 'CHP', 'CII', 'CKG', 'CMG', 'CRE', 'CRV', 'CSV',
+                      'CTD', 'CTF', 'CTG', 'CTR', 'CTS', 'DBC', 'DBD', 'DCL', 'DCM', 'DGC',
+                      'DGW', 'DHC', 'DHG', 'DIG', 'DMC', 'DPG', 'DPM', 'DPR', 'DRC', 'DSC',
+                      'DSE', 'DVP', 'DXG', 'DXS', 'EIB', 'ELC', 'EVF', 'EVG', 'FCN', 'FMC',
+                      'FPT', 'FRT', 'FTS', 'GAS', 'GEE', 'GEG', 'GEX', 'GIL', 'GMD', 'GVR',
+                      'HAG', 'HAH', 'HCM', 'HDB', 'HDC', 'HDG', 'HHS', 'HHV', 'HNA', 'HPG',
+                      'HQC', 'HSG', 'HT1', 'HTG', 'HVN', 'IDI', 'IJC', 'IMP', 'KBC', 'KDC',
+                      'KDH', 'KHG', 'KOS', 'KSB', 'LCG', 'LGC', 'LIX', 'LPB', 'MBB', 'MCM',
+                      'MIG', 'MSB', 'MSH', 'MSN', 'MWG', 'NAB', 'NAF', 'NBB', 'NCT', 'NKG',
+                      'NLG', 'NT2', 'NTC', 'NTL', 'NVL', 'OCB', 'ORS', 'PAN', 'PC1', 'PDN',
+                      'PDR', 'PET', 'PGD', 'PGI', 'PGV', 'PHR', 'PLX', 'PNJ', 'POW', 'PPC',
+                      'PTB', 'PVD', 'PVT', 'QCG', 'RAL', 'REE', 'SAB', 'SAM', 'SBA', 'SBT',
+                      'SCR', 'SCS', 'SGN', 'SGT', 'SHB', 'SHI', 'SHP', 'SIP', 'SJS', 'SSB',
+                      'SSI', 'STB', 'STG', 'STK', 'SVC', 'SZC', 'TAL', 'TBC', 'TCB', 'TCH',
+                      'TCM', 'TCX', 'TDM', 'TDP', 'TLG', 'TMP', 'TMS', 'TNH', 'TPB', 'TRA',
+                      'TRC', 'TTA', 'TV2', 'TVS', 'VAB', 'VCB', 'VCF', 'VCG', 'VCI', 'VDS',
+                      'VFG', 'VGC', 'VHC', 'VHM', 'VIB', 'VIC', 'VIX', 'VJC', 'VND', 'VNM',
+                      'VOS', 'VPB', 'VPD', 'VPI', 'VPL', 'VRE', 'VSC', 'VSH', 'VTP', 'YEG']
 
-    # Read CSV directly from URL
-    df = pd.read_csv(url)
+    # Google Drive file IDs for 4 CSV files (393 stocks total)
+    file_ids = [
+        '1op_GzDUtbcXOJOMkI2K-0AU9cF4m8J1S',  # 93 stocks
+        '1E0BDythcdIdGrIYdbJCNB0DxPHJ-njzc',  # 100 stocks
+        '1cb9Ef1IDyArlmguRZ5u63tCcxR57KEfA',  # 100 stocks
+        '1XPZKnRDklQ1DOdVgncn71SLg1pfisQtV'   # 100 stocks
+    ]
 
-    # Strip whitespace from column names
-    df.columns = df.columns.str.strip()
+    # Load and combine all files
+    dfs = []
+    for file_id in file_ids:
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        df_temp = pd.read_csv(url)
+        dfs.append(df_temp)
 
-    # Convert Trading Date to datetime
-    df['Trading Date'] = pd.to_datetime(df['Trading Date'], format='%m/%d/%Y')
+    # Concatenate all dataframes
+    df = pd.concat(dfs, ignore_index=True)
 
-    # Clean numeric columns (remove commas and convert to float)
-    numeric_cols = ['Daily Closing Price', 'Matching Volume', 'Matching Value']
-    for col in numeric_cols:
-        df[col] = df[col].astype(str).str.replace(',', '').astype(float)
+    # Filter to keep only 200 stocks from original list
+    df = df[df['symbol'].isin(stock_list_200)].copy()
+
+    # Convert date to datetime
+    df['date'] = pd.to_datetime(df['date'])
+
+    # Calculate Matching Value = close price * volume
+    df['Matching Value'] = df['close'] * df['volume']
+
+    # Rename columns to match expected format
+    df = df.rename(columns={
+        'symbol': 'TICKER',
+        'date': 'Trading Date',
+        'close': 'Daily Closing Price',
+        'volume': 'Matching Volume'
+    })
 
     # Sort by ticker and date
     df = df.sort_values(['TICKER', 'Trading Date']).reset_index(drop=True)
+
     return df
